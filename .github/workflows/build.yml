@@ -67,4 +67,4 @@ jobs:
         run: aws eks --region us-east-1 update-kubeconfig --name EKS_CLOUD
 
       - name: Deploy to Kubernetes
-        run: kubectl apply -f deployment-using-github-actions/deployment-service.yml
+        run: aws eks --region us-east-1 update-kubeconfig --name EKS_CLOUD && kubectl apply -f deployment-using-github-actions/deployment-service.yml
