@@ -8,14 +8,12 @@ on:
 jobs:
   build:
     name: Build
-    runs-on:  [self-hosted]
+    runs-on: [self-hosted]
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
         with:
           fetch-depth: 0  # Shallow clones should be disabled for better analysis
-
-    
 
       - name: SonarQube Scan
         uses: sonarsource/sonarqube-scan-action@master
@@ -27,6 +25,7 @@ jobs:
             -Dsonar.projectKey=swiggy
             -Dsonar.projectName=swiggy
             -Dsonar.sources=.
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
@@ -34,36 +33,16 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
 
-      - name: Docker build and push to ECR
+      - name: Docker build and push
         env:
           DOCKER_CLI_ACI: 1
         run: |
-          # Authenticate Docker to ECR (Swiggy repo)
+          # Authenticate Docker to ECR
           aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 893918474457.dkr.ecr.us-east-1.amazonaws.com
 
-          # Build Docker image for Swiggy
+          # Build Docker image
           docker build -t devops -f deployment-using-github-actions/Dockerfile deployment-using-github-actions/
 
-          # Tag and push Swiggy image
+          # Tag and push Docker image
           docker tag devops:latest 893918474457.dkr.ecr.us-east-1.amazonaws.com/devops:latest
           docker push 893918474457.dkr.ecr.us-east-1.amazonaws.com/devops:latest
-
-  deploy:
-    name: Deploy
-    needs: build
-    runs-on: [self-hosted]
-    steps:
-      - name: Pull Docker image
-        run: docker pull 893918474457.dkr.ecr.us-east-1.amazonaws.com/devops:latest
-
-      - name: Image scan
-        run: trivy image 893918474457.dkr.ecr.us-east-1.amazonaws.com/devops:latest > trivyimagedeploy.txt
-
-      - name: Deploy to container
-        run: docker run -d --name swiggy-clone1 -p 3000:3000 893918474457.dkr.ecr.us-east-1.amazonaws.com/devops:latest
-
-      - name: Update kubeconfig
-        run: aws eks --region us-east-1 update-kubeconfig --name EKS_CLOUD
-
-      - name: Deploy to Kubernetes
-        run: kubectl apply -f deployment-service.yml
