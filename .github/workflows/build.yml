@@ -15,12 +15,7 @@ jobs:
         with:
           fetch-depth: 0  # Shallow clones should be disabled for better analysis
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
+    
 
       - name: SonarQube Scan
         uses: sonarsource/sonarqube-scan-action@master
@@ -32,27 +27,23 @@ jobs:
             -Dsonar.projectKey=swiggy
             -Dsonar.projectName=swiggy
             -Dsonar.sources=.
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
 
       - name: Docker build and push to ECR
         env:
           DOCKER_CLI_ACI: 1
         run: |
           # Authenticate Docker to ECR (Swiggy repo)
-          aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 355628581932.dkr.ecr.us-east-1.amazonaws.com
-
-          # Build Docker image for Swiggy
-          docker build -t swiggy-repo -f deployment-using-github-actions/Dockerfile deployment-using-github-actions/
-
-          # Tag and push Swiggy image
-          docker tag swiggy-repo:latest 355628581932.dkr.ecr.us-east-1.amazonaws.com/swiggy-repo:latest
-          docker push 355628581932.dkr.ecr.us-east-1.amazonaws.com/swiggy-repo:latest
-
-          # Authenticate Docker to ECR (DevOps repo)
           aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 893918474457.dkr.ecr.us-east-1.amazonaws.com
 
-          # Build Docker image for DevOps
-          docker build -t devops .
+          # Build Docker image for Swiggy
+          docker build -t devops -f deployment-using-github-actions/Dockerfile deployment-using-github-actions/
 
-          # Tag and push DevOps image
+          # Tag and push Swiggy image
           docker tag devops:latest 893918474457.dkr.ecr.us-east-1.amazonaws.com/devops:latest
           docker push 893918474457.dkr.ecr.us-east-1.amazonaws.com/devops:latest
