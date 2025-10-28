@@ -46,3 +46,25 @@ jobs:
           # Tag and push Docker image
           docker tag devops:latest 893918474457.dkr.ecr.us-east-1.amazonaws.com/devops:latest
           docker push 893918474457.dkr.ecr.us-east-1.amazonaws.com/devops:latest
+  deploy:
+    needs: build
+    runs-on: [self-hosted]
+    steps:
+      - name: Docker pull image
+        run: docker pull 893918474457.dkr.ecr.us-east-1.amazonaws.com/devops:latest
+
+      - name: Image scan
+        run: trivy image 893918474457.dkr.ecr.us-east-1.amazonaws.com/devops:latest > trivyimagedeploy.txt
+
+      - name: Stop and remove existing container
+        run: |
+          docker stop swiggy-clone || true
+          docker rm swiggy-clone || true
+
+      - name: Deploy to container
+        run: docker run -d --name swiggy-clone -p 3000:3000 893918474457.dkr.ecr.us-east-1.amazonaws.com/devops:latest
+      - name: Update kubeconfig
+        run: aws eks --region us-east-1 update-kubeconfig --name EKS_CLOUD
+
+      - name: Deploy to Kubernetes
+        run: kubectl apply -f deployment-using-github-actions/deployment-service.yml
